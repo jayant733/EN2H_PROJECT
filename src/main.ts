@@ -2,8 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -43,30 +45,41 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
-  // Global validation pipe with whitelist and transformation enabled
+  // Global validation pipe configuration
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: true, // Strips payload properties without decorators
+      forbidNonWhitelisted: true, // Throws errors if extra fields are present
+      transform: true, // Coerces plain parameters to DTO class instances
+      transformOptions: {
+        enableImplicitConversion: true, // Enables automatic parsing of primitives
+      },
+      stopAtFirstError: false, // Validates all fields completely before failing
+      disableErrorMessages: env === 'production', // Shields internal DTO schemas in production
     }),
   );
 
-  // Global Exception Filter placeholder
-  // app.useGlobalFilters(new HttpExceptionFilter());
+  // Swagger OpenAPI Documentation Configuration
+  const config = new DocumentBuilder()
+    .setTitle('Service Booking Platform API')
+    .setDescription(
+      'Production-grade booking engine contract schemas and lifecycle hooks.',
+    )
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
-  // Swagger setup placeholder
-  // const config = new DocumentBuilder()
-  //   .setTitle('SaaS API')
-  //   .build();
-  // const document = SwaggerModule.createDocument(app, config);
-  // SwaggerModule.setup('api/docs', app, document);
+  // Global Exception Filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   await app.listen(port);
 
   logger.log(`==========================================================`);
   logger.log(`Application started in [${env}] mode`);
   logger.log(`Server is running at: http://localhost:${port}/api/v1`);
+  logger.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
   logger.log(`==========================================================`);
 }
 
