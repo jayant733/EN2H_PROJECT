@@ -2,8 +2,11 @@ import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load environment variables for TypeORM CLI usage
+// Load environment variables specifically for CLI command execution
 dotenv.config();
+
+const env = process.env.NODE_ENV || 'development';
+const isProduction = env === 'production' || env === 'staging';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -12,9 +15,12 @@ export const AppDataSource = new DataSource({
   username: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  synchronize: false, // Disables synchronization in production for data safety
-  logging: process.env.NODE_ENV === 'development',
+  synchronize: false, // Strict: never synchronize schema in production for data safety
+  logging: env === 'development',
   entities: [path.join(__dirname, '/../**/*.entity{.ts,.js}')],
   migrations: [path.join(__dirname, '/migrations/*{.ts,.js}')],
-  subscribers: [],
+  ssl: isProduction ? { rejectUnauthorized: false } : false,
+  extra: {
+    timezone: 'UTC',
+  },
 });
