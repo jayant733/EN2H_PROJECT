@@ -2,6 +2,7 @@ import { Controller, Get, Res, HttpStatus } from '@nestjs/common';
 import { HealthService } from './health.service';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Health')
 @Controller('health')
@@ -9,6 +10,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @Public()
   @ApiOperation({
     summary: 'Check API service health and database connectivity status',
   })

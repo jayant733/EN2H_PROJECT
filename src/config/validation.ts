@@ -12,6 +12,9 @@ export const environmentValidationSchema = Joi.object({
   DATABASE_NAME: Joi.string().required(),
   JWT_SECRET: Joi.string().required(),
   JWT_EXPIRES_IN: Joi.string().required(),
+  JWT_REFRESH_SECRET: Joi.string().required(),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+  BCRYPT_SALT_ROUNDS: Joi.number().integer().min(4).max(31).default(12),
   LOG_LEVEL: Joi.string()
     .valid('error', 'warn', 'log', 'debug', 'verbose')
     .default('log'),

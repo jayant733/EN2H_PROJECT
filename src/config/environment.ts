@@ -1,13 +1,33 @@
-export interface EnvironmentVariables {
-  NODE_ENV: 'development' | 'production' | 'test' | 'staging';
-  PORT: number;
-  DATABASE_HOST: string;
-  DATABASE_PORT: number;
-  DATABASE_USER: string;
-  DATABASE_PASSWORD: string;
-  DATABASE_NAME: string;
-  JWT_SECRET: string;
-  JWT_EXPIRES_IN: string;
-  LOG_LEVEL: 'error' | 'warn' | 'log' | 'debug' | 'verbose';
-  CORS_ORIGIN: string;
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password?: string;
+  database: string;
+  logging: boolean;
+}
+
+export interface AuthConfig {
+  jwtSecret: string;
+  jwtExpiresIn: string;
+  jwtRefreshSecret: string;
+  jwtRefreshExpiresIn: string;
+  bcryptSaltRounds: number;
+}
+
+export interface LoggingConfig {
+  level: string;
+}
+
+export interface CorsConfig {
+  origin: string;
+}
+
+export interface EnvironmentConfig {
+  env: string;
+  port: number;
+  database: DatabaseConfig;
+  auth: AuthConfig;
+  logging: LoggingConfig;
+  cors: CorsConfig;
 }

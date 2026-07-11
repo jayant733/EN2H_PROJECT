@@ -12,6 +12,9 @@ export default () => ({
   auth: {
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN,
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+    jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
   },
   logging: {
     level: process.env.LOG_LEVEL || 'log',
