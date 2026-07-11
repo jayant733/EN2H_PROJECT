@@ -128,7 +128,7 @@ export class InitialSchema1720623600000 implements MigrationInterface {
     );
     await queryRunner.query(`
       CREATE INDEX idx_user_sessions_active ON user_sessions(user_id) 
-      WHERE revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP;
+      WHERE revoked_at IS NULL;
     `);
   }
 

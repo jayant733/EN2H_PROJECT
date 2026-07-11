@@ -32,13 +32,18 @@ export class BookingAuditLog {
   @JoinColumn({ name: 'changed_by' })
   changedBy!: User;
 
-  @Column({ name: 'previous_status', length: 20, nullable: true })
+  @Column({
+    type: 'varchar',
+    name: 'previous_status',
+    length: 20,
+    nullable: true,
+  })
   previousStatus?: string | null;
 
-  @Column({ name: 'new_status', length: 20 })
+  @Column({ type: 'varchar', name: 'new_status', length: 20 })
   newStatus!: string;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   reason?: string | null;
 
   @CreateDateColumn({

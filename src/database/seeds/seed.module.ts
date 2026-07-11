@@ -5,6 +5,7 @@ import { UsersModule } from '../../users/users.module';
 import { ServicesModule } from '../../services/services.module';
 import { BookingsModule } from '../../bookings/bookings.module';
 import { AuthModule } from '../../auth/auth.module';
+import { CommonModule } from '../../common/common.module';
 import { SeedService } from './seed.service';
 import configuration from '../../config/configuration';
 import { environmentValidationSchema } from '../../config/validation';
@@ -21,6 +22,7 @@ import { environmentValidationSchema } from '../../config/validation';
     ServicesModule,
     BookingsModule,
     AuthModule,
+    CommonModule,
   ],
   providers: [SeedService],
 })
