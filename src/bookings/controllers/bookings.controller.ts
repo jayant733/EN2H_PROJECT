@@ -30,7 +30,7 @@ import { plainToInstance } from 'class-transformer';
 
 @ApiTags('Bookings')
 @Controller('bookings')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 

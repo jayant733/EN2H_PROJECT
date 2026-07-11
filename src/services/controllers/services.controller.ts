@@ -81,7 +81,7 @@ export class ServicesController {
   }
 
   @Post()
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(RolesGuard)
   @Roles(UserRole.VENDOR)
   @ApiOperation({ summary: 'Register a new service listing (Vendors only)' })
@@ -108,7 +108,7 @@ export class ServicesController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(RolesGuard, ServiceOwnerGuard)
   @Roles(UserRole.VENDOR)
   @ApiOperation({
@@ -141,7 +141,7 @@ export class ServicesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(RolesGuard, ServiceOwnerGuard)
   @Roles(UserRole.VENDOR)
   @ApiOperation({

@@ -59,17 +59,36 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger OpenAPI Documentation Configuration
-  const config = new DocumentBuilder()
-    .setTitle('Service Booking Platform API')
-    .setDescription(
-      'Production-grade booking engine contract schemas and lifecycle hooks.',
-    )
-    .setVersion('1.0.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger OpenAPI Documentation Configuration only enabled in non-production environments
+  if (env !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('SaaS Service Booking Platform API')
+      .setDescription(
+        'Production-grade booking scheduling engine contract schemas, authentication endpoints, and lifecycle transition hooks.',
+      )
+      .setVersion('1.0.0')
+      .setContact(
+        'API Development Team',
+        'https://example.com/support',
+        'api-support@example.com',
+      )
+      .setLicense('MIT License', 'https://opensource.org/licenses/MIT')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT Access Token',
+          in: 'header',
+        },
+        'JWT-auth', // This credential name matches the Swagger security key
+      )
+      .addServer(`http://localhost:${port}/api/v1`, 'Local Development Server')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Global Exception Filter
   app.useGlobalFilters(new HttpExceptionFilter());
