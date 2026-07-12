@@ -84,7 +84,7 @@ async function bootstrap() {
         },
         'JWT-auth', // This credential name matches the Swagger security key
       )
-      .addServer(`http://localhost:${port}/api/v1`, 'Local Development Server')
+      .addServer(`http://localhost:${port}`, 'Local Development Server')
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
