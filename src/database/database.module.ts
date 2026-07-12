@@ -11,13 +11,19 @@ import { ConfigService } from '@nestjs/config';
         const env = configService.get<string>('env') || 'development';
         const isProduction = env === 'production' || env === 'staging';
 
+        const url = configService.get<string>('database.url');
+
         return {
           type: 'postgres',
-          host: configService.get<string>('database.host'),
-          port: configService.get<number>('database.port'),
-          username: configService.get<string>('database.username'),
-          password: configService.get<string>('database.password'),
-          database: configService.get<string>('database.database'),
+          ...(url
+            ? { url }
+            : {
+                host: configService.get<string>('database.host'),
+                port: configService.get<number>('database.port'),
+                username: configService.get<string>('database.username'),
+                password: configService.get<string>('database.password'),
+                database: configService.get<string>('database.database'),
+              }),
           synchronize: false, // Strict: never synchronize in production for schema safety
           logging: configService.get<boolean>('database.logging'),
           autoLoadEntities: true,
