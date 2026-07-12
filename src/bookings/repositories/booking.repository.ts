@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Booking } from '../entities/booking.entity';
 import { BookingStatus } from '../../shared/enums/booking-status.enum';
 import { QueryBookingDto } from '../dto/query-booking.dto';
@@ -26,32 +26,22 @@ export class BookingRepository {
     return this.repository.save(booking);
   }
 
-  async hasOverlappingBooking(
-    serviceId: string,
-    start: Date,
-    end: Date,
-  ): Promise<boolean> {
-    return this.repository.exists({
-      where: {
-        serviceId,
-        status: BookingStatus.CONFIRMED,
-        scheduledAt: LessThan(end),
-        endTime: MoreThan(start),
-      },
-    });
-  }
-
   async hasDuplicateBooking(
-    clientId: string,
     serviceId: string,
-    scheduledAt: Date,
+    bookingDate: string,
+    bookingTime: string,
   ): Promise<boolean> {
+    const activeStatuses = [
+      BookingStatus.PENDING,
+      BookingStatus.CONFIRMED,
+      BookingStatus.COMPLETED,
+    ];
     return this.repository.exists({
       where: {
-        clientId,
         serviceId,
-        scheduledAt,
-        status: BookingStatus.PENDING, // Check active status: either PENDING or CONFIRMED
+        bookingDate,
+        bookingTime,
+        status: In(activeStatuses),
       },
     });
   }
@@ -77,20 +67,25 @@ export class BookingRepository {
       });
     }
 
-    if (dto.fromDate) {
-      qb.andWhere('booking.scheduledAt >= :fromDate', {
-        fromDate: dto.fromDate,
+    if (dto.bookingDate) {
+      qb.andWhere('booking.bookingDate = :bookingDate', {
+        bookingDate: dto.bookingDate,
       });
     }
 
-    if (dto.toDate) {
-      qb.andWhere('booking.scheduledAt <= :toDate', { toDate: dto.toDate });
+    if (dto.search) {
+      const searchPattern = `%${dto.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(booking.customerName) LIKE :searchPattern OR LOWER(booking.customerEmail) LIKE :searchPattern OR LOWER(booking.customerPhone) LIKE :searchPattern)',
+        { searchPattern },
+      );
     }
 
     // Whitelist allowed sorting columns to block dynamic injection
     const allowedSortFields = [
       'createdAt',
-      'scheduledAt',
+      'bookingDate',
+      'bookingTime',
       'priceAtBooking',
       'status',
     ];

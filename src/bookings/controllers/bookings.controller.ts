@@ -23,6 +23,7 @@ import { CancelBookingDto } from '../dto/cancel-booking.dto';
 import { QueryBookingDto } from '../dto/query-booking.dto';
 import { BookingResponseDto } from '../dto/booking-response.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { User } from '../../users/entities/user.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../../shared/enums/role.enum';
@@ -35,8 +36,9 @@ export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Post()
+  @Public()
   @ApiOperation({
-    summary: 'Create a new service booking reservation (Client only)',
+    summary: 'Create a new service booking reservation (Public)',
   })
   @ApiResponse({
     status: 201,
@@ -46,13 +48,13 @@ export class BookingsController {
   @ApiResponse({ status: 400, description: 'Invalid DTO input or past dates' })
   @ApiResponse({
     status: 409,
-    description: 'Client duplicate or overlapping booking conflicts',
+    description: 'Duplicate booking conflicts',
   })
   async create(
     @Body() dto: CreateBookingDto,
     @CurrentUser() user: User | null,
   ): Promise<BookingResponseDto> {
-    const clientId = user?.id || '';
+    const clientId = user?.id || null;
     const booking = await this.bookingsService.create(dto, clientId);
     return plainToInstance(BookingResponseDto, booking, {
       excludeExtraneousValues: true,

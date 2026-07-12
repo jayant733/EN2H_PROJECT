@@ -10,7 +10,6 @@ import { CreateServiceDto } from '../dto/create-service.dto';
 import { UpdateServiceDto } from '../dto/update-service.dto';
 import { QueryServiceDto } from '../dto/query-service.dto';
 import { Service } from '../entities/service.entity';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 
 @Injectable()
 export class ServicesService {
@@ -22,7 +21,7 @@ export class ServicesService {
     const service = await this.serviceRepository.save({
       ...dto,
       vendorId,
-      status: dto.status || ServiceStatus.DRAFT,
+      isActive: dto.isActive !== undefined ? dto.isActive : true,
     });
 
     this.logger.log(`Service created: ${service.id} by vendor ${vendorId}`);
@@ -36,7 +35,7 @@ export class ServicesService {
   ): Promise<Service> {
     const service = await this.serviceRepository.findOneById(id);
 
-    if (!service) {
+    if (!service || service.deletedAt) {
       this.logger.warn(`Update failed: Service ${id} not found`);
       throw new NotFoundException('Requested service catalog item not found.');
     }
@@ -47,13 +46,6 @@ export class ServicesService {
       );
       throw new ForbiddenException(
         'You do not have permission to modify this service listing.',
-      );
-    }
-
-    if (service.status === ServiceStatus.ARCHIVED) {
-      this.logger.warn(`Update failed: Service ${id} is soft-deleted/archived`);
-      throw new ConflictException(
-        'Cannot update an archived or soft-deleted service listing.',
       );
     }
 
@@ -69,7 +61,7 @@ export class ServicesService {
   async remove(id: string, vendorId: string): Promise<void> {
     const service = await this.serviceRepository.findOneById(id);
 
-    if (!service) {
+    if (!service || service.deletedAt) {
       this.logger.warn(`Soft delete failed: Service ${id} not found`);
       throw new NotFoundException('Requested service catalog item not found.');
     }
@@ -83,23 +75,19 @@ export class ServicesService {
       );
     }
 
-    if (service.status === ServiceStatus.ARCHIVED) {
-      this.logger.log(`Service ${id} is already archived (idempotent remove)`);
-      return;
-    }
-
-    service.status = ServiceStatus.ARCHIVED;
+    service.isActive = false;
+    service.deletedAt = new Date();
     await this.serviceRepository.save(service);
 
     this.logger.log(
-      `Service soft-deleted (archived): ${id} by vendor ${vendorId}`,
+      `Service soft-deleted: ${id} by vendor ${vendorId}`,
     );
   }
 
   async findOne(id: string): Promise<Service> {
     const service = await this.serviceRepository.findOneById(id);
 
-    if (!service || service.status === ServiceStatus.ARCHIVED) {
+    if (!service || service.deletedAt) {
       throw new NotFoundException('Requested service catalog item not found.');
     }
 

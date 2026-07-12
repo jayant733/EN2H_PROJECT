@@ -7,11 +7,10 @@ import {
   Min,
   MaxLength,
   MinLength,
-  IsEnum,
+  IsBoolean,
   IsOptional,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 
 export class CreateServiceDto {
   @ApiProperty({
@@ -62,7 +61,7 @@ export class CreateServiceDto {
   @Type(() => Number)
   @IsInt()
   @Min(15)
-  durationMinutes!: number;
+  duration!: number;
 
   @ApiProperty({
     description: 'General category classification for query grouping',
@@ -78,12 +77,12 @@ export class CreateServiceDto {
   category!: string;
 
   @ApiProperty({
-    description: 'Initial state of the service profile',
-    enum: ServiceStatus,
-    default: ServiceStatus.DRAFT,
+    description: 'Initial active state of the service profile',
+    example: true,
+    default: true,
     required: false,
   })
   @IsOptional()
-  @IsEnum(ServiceStatus)
-  status: ServiceStatus = ServiceStatus.DRAFT;
+  @IsBoolean()
+  isActive: boolean = true;
 }

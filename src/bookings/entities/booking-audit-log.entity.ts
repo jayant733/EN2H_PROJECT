@@ -25,12 +25,12 @@ export class BookingAuditLog {
   @JoinColumn({ name: 'booking_id' })
   booking!: Booking;
 
-  @Column({ name: 'changed_by' })
-  changedById!: string;
+  @Column({ name: 'changed_by', nullable: true })
+  changedById?: string | null;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'changed_by' })
-  changedBy!: User;
+  changedBy?: User | null;
 
   @Column({
     type: 'varchar',

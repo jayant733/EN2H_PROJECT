@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 import { UserResponseDto } from '../../users/dto/user-response.dto';
 
 export class ServiceResponseDto {
@@ -53,7 +52,7 @@ export class ServiceResponseDto {
     example: 45,
   })
   @Expose()
-  durationMinutes!: number;
+  duration!: number;
 
   @ApiProperty({
     description: 'Service category grouping',
@@ -63,12 +62,11 @@ export class ServiceResponseDto {
   category!: string;
 
   @ApiProperty({
-    description: 'State status of the service profile',
-    enum: ServiceStatus,
-    example: ServiceStatus.ACTIVE,
+    description: 'Active status of the service profile',
+    example: true,
   })
   @Expose()
-  status!: ServiceStatus;
+  isActive!: boolean;
 
   @ApiProperty({
     description: 'Timestamp when service profile was created',

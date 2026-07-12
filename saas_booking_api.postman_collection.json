@@ -243,7 +243,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Premium Haircut & Styling\",\n  \"description\": \"Include wash, scissor cut, conditioning blow-out, and premium gel styling.\",\n  \"price\": 75.00,\n  \"durationMinutes\": 45,\n  \"category\": \"Hair Styling\"\n}"
+              "raw": "{\n  \"title\": \"Premium Haircut & Styling\",\n  \"description\": \"Include wash, scissor cut, conditioning blow-out, and premium gel styling.\",\n  \"price\": 75.00,\n  \"duration\": 45,\n  \"category\": \"Hair Styling\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/services",
@@ -402,7 +402,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"serviceId\": \"d3b07384-d113-49cd-a5d6-89d020d2d9ff\",\n  \"scheduledAt\": \"2026-07-20T14:00:00.000Z\",\n  \"notes\": \"Would prefer stylistic trim on the sides.\",\n  \"idempotencyKey\": \"client_uuid_req_1\"\n}"
+              "raw": "{\n  \"serviceId\": \"d3b07384-d113-49cd-a5d6-89d020d2d9ff\",\n  \"customerName\": \"Jane Doe\",\n  \"customerEmail\": \"jane.doe@example.com\",\n  \"customerPhone\": \"+1-555-0199\",\n  \"bookingDate\": \"2026-08-20\",\n  \"bookingTime\": \"10:00\",\n  \"notes\": \"Would prefer stylistic trim on the sides.\",\n  \"idempotencyKey\": \"client_uuid_req_1\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/bookings",

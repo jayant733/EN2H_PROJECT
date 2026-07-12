@@ -16,17 +16,16 @@ import { BookingAuditLog } from './booking-audit-log.entity';
 @Entity('bookings')
 @Check(
   'chk_bookings_status',
-  "status IN ('pending', 'confirmed', 'completed', 'cancelled')",
+  "status IN ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED')",
 )
-@Check('chk_bookings_time_order', 'scheduled_at < end_time')
 export class Booking extends BaseEntity {
-  @Column({ name: 'client_id' })
+  @Column({ name: 'client_id', type: 'uuid', nullable: true })
   @Index('idx_bookings_client_id')
-  clientId!: string;
+  clientId?: string | null;
 
-  @ManyToOne(() => User, (user) => user.bookings, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (user) => user.bookings, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'client_id' })
-  client!: User;
+  client?: User | null;
 
   @Column({ name: 'service_id' })
   @Index('idx_bookings_service_id')
@@ -38,12 +37,22 @@ export class Booking extends BaseEntity {
   @JoinColumn({ name: 'service_id' })
   service!: Service;
 
-  @Column({ type: 'timestamptz', name: 'scheduled_at' })
-  scheduledAt!: Date;
+  @Column({ name: 'customer_name' })
+  customerName!: string;
 
-  @Column({ type: 'timestamptz', name: 'end_time' })
-  @Index('idx_bookings_schedule')
-  endTime!: Date;
+  @Column({ name: 'customer_email' })
+  customerEmail!: string;
+
+  @Column({ name: 'customer_phone' })
+  customerPhone!: string;
+
+  @Column({ type: 'date', name: 'booking_date' })
+  @Index('idx_bookings_date')
+  bookingDate!: string;
+
+  @Column({ type: 'time', name: 'booking_time' })
+  @Index('idx_bookings_time')
+  bookingTime!: string;
 
   @Column('numeric', { name: 'price_at_booking', precision: 12, scale: 2 })
   priceAtBooking!: number;
@@ -58,8 +67,8 @@ export class Booking extends BaseEntity {
   @Column('text', { nullable: true })
   notes?: string | null;
 
-  @Column({ name: 'idempotency_key', unique: true, type: 'uuid' })
-  idempotencyKey!: string;
+  @Column({ name: 'idempotency_key', unique: true, type: 'uuid', nullable: true })
+  idempotencyKey?: string | null;
 
   @OneToMany(() => BookingAuditLog, (log) => log.booking)
   auditLogs?: BookingAuditLog[];

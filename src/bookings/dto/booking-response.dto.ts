@@ -13,11 +13,12 @@ export class BookingResponseDto {
   id!: string;
 
   @ApiProperty({
-    description: 'Client identifier',
+    description: 'Client identifier (optional)',
     example: '0190a463-b827-7c1d-8bde-d872b7a9ef31',
+    required: false,
   })
   @Expose()
-  clientId!: string;
+  clientId?: string;
 
   @ApiProperty({
     description: 'Client profile details (optional expansion)',
@@ -45,18 +46,39 @@ export class BookingResponseDto {
   service?: ServiceResponseDto;
 
   @ApiProperty({
-    description: 'Start date and time of scheduled appointment',
-    example: '2026-08-15T10:00:00.000Z',
+    description: 'Customer full name',
+    example: 'Jane Doe',
   })
   @Expose()
-  scheduledAt!: Date;
+  customerName!: string;
 
   @ApiProperty({
-    description: 'End date and time of scheduled appointment',
-    example: '2026-08-15T10:45:00.000Z',
+    description: 'Customer email address',
+    example: 'jane.doe@example.com',
   })
   @Expose()
-  endTime!: Date;
+  customerEmail!: string;
+
+  @ApiProperty({
+    description: 'Customer phone number',
+    example: '+1-555-0199',
+  })
+  @Expose()
+  customerPhone!: string;
+
+  @ApiProperty({
+    description: 'Scheduled date of booking in YYYY-MM-DD format',
+    example: '2026-08-15',
+  })
+  @Expose()
+  bookingDate!: string;
+
+  @ApiProperty({
+    description: 'Scheduled time of booking in HH:MM format',
+    example: '10:00',
+  })
+  @Expose()
+  bookingTime!: string;
 
   @ApiProperty({
     description: 'Snapshot cost of service at the time booking was created',

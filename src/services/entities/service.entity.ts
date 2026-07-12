@@ -10,11 +10,10 @@ import {
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 
 @Entity('services')
 @Check('chk_services_price', 'price > 0.00')
-@Check('chk_services_duration', 'duration_minutes >= 15')
+@Check('chk_services_duration', 'duration >= 15')
 export class Service extends BaseEntity {
   @Column({ name: 'vendor_id' })
   @Index('idx_services_vendor_id')
@@ -34,19 +33,19 @@ export class Service extends BaseEntity {
   @Column('numeric', { precision: 12, scale: 2 })
   price!: number;
 
-  @Column('integer', { name: 'duration_minutes' })
-  durationMinutes!: number;
+  @Column('integer', { name: 'duration' })
+  duration!: number;
 
   @Column()
-  @Index('idx_services_category_status')
+  @Index('idx_services_category_active')
   category!: string;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    default: ServiceStatus.DRAFT,
+    type: 'boolean',
+    name: 'is_active',
+    default: true,
   })
-  status!: ServiceStatus;
+  isActive!: boolean;
 
   @OneToMany(() => Booking, (booking) => booking.service)
   bookings?: Booking[];

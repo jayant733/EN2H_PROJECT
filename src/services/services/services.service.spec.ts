@@ -2,11 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ServicesService } from './services.service';
 import { ServiceRepository } from '../repositories/service.repository';
 import { Service } from '../entities/service.entity';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 import {
   NotFoundException,
   ForbiddenException,
-  ConflictException,
 } from '@nestjs/common';
 import { CreateServiceDto } from '../dto/create-service.dto';
 import { UpdateServiceDto } from '../dto/update-service.dto';
@@ -42,9 +40,9 @@ describe('ServicesService', () => {
         title: 'Premium Massage',
         description: 'Includes hot stone therapy',
         price: 90.0,
-        durationMinutes: 60,
+        duration: 60,
         category: 'Wellness',
-        status: ServiceStatus.DRAFT,
+        isActive: true,
       };
 
       repository.save.mockResolvedValue({
@@ -66,7 +64,7 @@ describe('ServicesService', () => {
         id: 'service_id',
         vendorId: 'vendor_id',
         title: 'Old Title',
-        status: ServiceStatus.ACTIVE,
+        isActive: true,
       } as Service;
 
       const dto: UpdateServiceDto = { title: 'New Title' };
@@ -92,7 +90,7 @@ describe('ServicesService', () => {
       const existing = {
         id: 'service_id',
         vendorId: 'owner_id',
-        status: ServiceStatus.ACTIVE,
+        isActive: true,
       } as Service;
       const dto: UpdateServiceDto = { title: 'New Title' };
 
@@ -103,11 +101,12 @@ describe('ServicesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw ConflictException if service is archived/soft-deleted', async () => {
+    it('should throw NotFoundException if service is soft-deleted/archived', async () => {
       const existing = {
         id: 'service_id',
         vendorId: 'vendor_id',
-        status: ServiceStatus.ARCHIVED,
+        deletedAt: new Date(),
+        isActive: false,
       } as Service;
       const dto: UpdateServiceDto = { title: 'New Title' };
 
@@ -115,23 +114,24 @@ describe('ServicesService', () => {
 
       await expect(
         service.update('service_id', dto, 'vendor_id'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('remove', () => {
-    it('should soft-delete own service by marking status as ARCHIVED', async () => {
+    it('should soft-delete own service by marking isActive as false and setting deletedAt', async () => {
       const existing = {
         id: 'service_id',
         vendorId: 'vendor_id',
-        status: ServiceStatus.ACTIVE,
+        isActive: true,
       } as Service;
 
       repository.findOneById.mockResolvedValue(existing);
       repository.save.mockResolvedValue(existing);
 
       await service.remove('service_id', 'vendor_id');
-      expect(existing.status).toBe(ServiceStatus.ARCHIVED);
+      expect(existing.isActive).toBe(false);
+      expect(existing.deletedAt).toBeInstanceOf(Date);
       expect(repository.save).toHaveBeenCalledWith(existing);
     });
 
@@ -139,7 +139,7 @@ describe('ServicesService', () => {
       const existing = {
         id: 'service_id',
         vendorId: 'owner_id',
-        status: ServiceStatus.ACTIVE,
+        isActive: true,
       } as Service;
 
       repository.findOneById.mockResolvedValue(existing);
@@ -149,17 +149,19 @@ describe('ServicesService', () => {
       );
     });
 
-    it('should act idempotently if service is already archived', async () => {
+    it('should throw NotFoundException if service is already soft-deleted', async () => {
       const existing = {
         id: 'service_id',
         vendorId: 'vendor_id',
-        status: ServiceStatus.ARCHIVED,
+        deletedAt: new Date(),
+        isActive: false,
       } as Service;
 
       repository.findOneById.mockResolvedValue(existing);
 
-      await service.remove('service_id', 'vendor_id');
-      expect(repository.save).not.toHaveBeenCalled();
+      await expect(service.remove('service_id', 'vendor_id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -167,7 +169,7 @@ describe('ServicesService', () => {
     it('should successfully return active service', async () => {
       const existing = {
         id: 'service_id',
-        status: ServiceStatus.ACTIVE,
+        isActive: true,
       } as Service;
 
       repository.findOneById.mockResolvedValue(existing);
@@ -176,10 +178,11 @@ describe('ServicesService', () => {
       expect(result).toEqual(existing);
     });
 
-    it('should throw NotFoundException if service is archived', async () => {
+    it('should throw NotFoundException if service is soft-deleted', async () => {
       const existing = {
         id: 'service_id',
-        status: ServiceStatus.ARCHIVED,
+        deletedAt: new Date(),
+        isActive: false,
       } as Service;
 
       repository.findOneById.mockResolvedValue(existing);

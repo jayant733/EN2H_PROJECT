@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
+import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class QueryServiceDto {
   @ApiProperty({
@@ -40,14 +39,17 @@ export class QueryServiceDto {
   category?: string;
 
   @ApiProperty({
-    description: 'Filter services by active or draft state status',
+    description: 'Filter services by active status',
     required: false,
-    enum: ServiceStatus,
-    example: ServiceStatus.ACTIVE,
+    example: true,
   })
-  @IsEnum(ServiceStatus)
   @IsOptional()
-  status?: ServiceStatus;
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  isActive?: boolean;
 
   @ApiProperty({
     description:

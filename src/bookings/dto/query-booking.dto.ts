@@ -68,24 +68,22 @@ export class QueryBookingDto {
   serviceId?: string;
 
   @ApiProperty({
-    description: 'Query bookings scheduled at or after this date time',
+    description: 'Search string matched against customerName, customerEmail, or customerPhone',
     required: false,
-    example: '2026-07-10T12:00:00.000Z',
+    example: 'Jane',
   })
-  @Type(() => Date)
-  @IsDate()
+  @IsString()
   @IsOptional()
-  fromDate?: Date;
+  search?: string;
 
   @ApiProperty({
-    description: 'Query bookings scheduled at or before this date time',
+    description: 'Filter by specific booking date in YYYY-MM-DD format',
     required: false,
-    example: '2026-07-15T12:00:00.000Z',
+    example: '2026-08-15',
   })
-  @Type(() => Date)
-  @IsDate()
+  @IsString()
   @IsOptional()
-  toDate?: Date;
+  bookingDate?: string;
 
   @ApiProperty({
     description: 'Column field name to sort the result list by',

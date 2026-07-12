@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Service } from '../entities/service.entity';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 import { QueryServiceDto } from '../dto/query-service.dto';
+import { Service } from '../entities/service.entity';
 
 @Injectable()
 export class ServiceRepository {
@@ -25,19 +24,14 @@ export class ServiceRepository {
     // Resolve N+1 issues by joining vendor details in a single query
     qb.leftJoinAndSelect('service.vendor', 'vendor');
 
-    // Enforce soft-delete exclusion boundary
-    qb.andWhere('service.status != :archivedStatus', {
-      archivedStatus: ServiceStatus.ARCHIVED,
-    });
-
     if (dto.category) {
       qb.andWhere('LOWER(service.category) = LOWER(:category)', {
         category: dto.category.trim(),
       });
     }
 
-    if (dto.status) {
-      qb.andWhere('service.status = :status', { status: dto.status });
+    if (dto.isActive !== undefined) {
+      qb.andWhere('service.isActive = :isActive', { isActive: dto.isActive });
     }
 
     if (dto.search) {
@@ -52,7 +46,7 @@ export class ServiceRepository {
     const allowedSortFields = [
       'createdAt',
       'price',
-      'durationMinutes',
+      'duration',
       'title',
       'category',
     ];

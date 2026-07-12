@@ -4,7 +4,7 @@ export class InitialSchema1720623600000 implements MigrationInterface {
   name = 'InitialSchema1720623600000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Enable btree_gist extension for range and uuid checks
+    // 1. Enable btree_gist extension
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS btree_gist;`);
 
     // 2. Users Table
@@ -31,19 +31,18 @@ export class InitialSchema1720623600000 implements MigrationInterface {
       CREATE TABLE services (
         id UUID PRIMARY KEY,
         vendor_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-        title VARCHAR(100) NOT NULL,
+        title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         price NUMERIC(12,2) NOT NULL,
-        duration_minutes INTEGER NOT NULL,
+        duration INTEGER NOT NULL,
         category VARCHAR(50) NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        is_active BOOLEAN NOT NULL DEFAULT true,
         created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         deleted_at TIMESTAMPTZ,
         version INTEGER NOT NULL DEFAULT 1,
         CONSTRAINT chk_services_price CHECK (price > 0.00),
-        CONSTRAINT chk_services_duration CHECK (duration_minutes >= 15),
-        CONSTRAINT chk_services_status CHECK (status IN ('draft', 'active', 'archived'))
+        CONSTRAINT chk_services_duration CHECK (duration >= 15)
       );
     `);
 
@@ -51,38 +50,31 @@ export class InitialSchema1720623600000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE bookings (
         id UUID PRIMARY KEY,
-        client_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        client_id UUID REFERENCES users(id) ON DELETE SET NULL,
         service_id UUID NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
-        scheduled_at TIMESTAMPTZ NOT NULL,
-        end_time TIMESTAMPTZ NOT NULL,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_email VARCHAR(255) NOT NULL,
+        customer_phone VARCHAR(50) NOT NULL,
+        booking_date DATE NOT NULL,
+        booking_time TIME NOT NULL,
         price_at_booking NUMERIC(12,2) NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
         notes TEXT,
-        idempotency_key UUID UNIQUE NOT NULL,
+        idempotency_key UUID UNIQUE,
         version INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         deleted_at TIMESTAMPTZ,
-        CONSTRAINT chk_bookings_status CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
-        CONSTRAINT chk_bookings_time_order CHECK (scheduled_at < end_time)
+        CONSTRAINT chk_bookings_status CHECK (status IN ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'))
       );
     `);
 
-    // 5. Overlap Constraint (Exclusion)
-    await queryRunner.query(`
-      ALTER TABLE bookings ADD CONSTRAINT exclude_overlapping_bookings 
-      EXCLUDE USING gist (
-        service_id WITH =,
-        tstzrange(scheduled_at, end_time) WITH &&
-      ) WHERE (status IN ('pending', 'confirmed'));
-    `);
-
-    // 6. Booking Audit Logs Table
+    // 5. Booking Audit Logs Table
     await queryRunner.query(`
       CREATE TABLE booking_audit_logs (
         id UUID PRIMARY KEY,
         booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-        changed_by UUID NOT NULL REFERENCES users(id),
+        changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
         previous_status VARCHAR(20),
         new_status VARCHAR(20) NOT NULL,
         reason VARCHAR(255),
@@ -90,7 +82,7 @@ export class InitialSchema1720623600000 implements MigrationInterface {
       );
     `);
 
-    // 7. User Sessions Table
+    // 6. User Sessions Table
     await queryRunner.query(`
       CREATE TABLE user_sessions (
         id UUID PRIMARY KEY,
@@ -104,7 +96,7 @@ export class InitialSchema1720623600000 implements MigrationInterface {
       );
     `);
 
-    // 8. Indexes
+    // 7. Indexes
     await queryRunner.query(
       `CREATE UNIQUE INDEX idx_users_email_lower ON users(LOWER(email));`,
     );
@@ -112,7 +104,7 @@ export class InitialSchema1720623600000 implements MigrationInterface {
       `CREATE INDEX idx_services_vendor_id ON services(vendor_id);`,
     );
     await queryRunner.query(
-      `CREATE INDEX idx_services_category_status ON services(category, status);`,
+      `CREATE INDEX idx_services_category_active ON services(category, is_active);`,
     );
     await queryRunner.query(
       `CREATE INDEX idx_services_search_vector ON services USING gin(to_tsvector('english', title || ' ' || description));`,
@@ -124,30 +116,36 @@ export class InitialSchema1720623600000 implements MigrationInterface {
       `CREATE INDEX idx_bookings_service_id ON bookings(service_id);`,
     );
     await queryRunner.query(
-      `CREATE INDEX idx_bookings_schedule ON bookings(scheduled_at, end_time);`,
+      `CREATE INDEX idx_bookings_date ON bookings(booking_date);`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_bookings_time ON bookings(booking_time);`,
     );
     await queryRunner.query(`
       CREATE INDEX idx_user_sessions_active ON user_sessions(user_id) 
       WHERE revoked_at IS NULL;
     `);
+
+    // 8. Prevent duplicate active bookings for the same service, date, and time
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX idx_bookings_service_date_time ON bookings (service_id, booking_date, booking_time) 
+      WHERE status != 'CANCELLED';
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_service_date_time;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_user_sessions_active;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_schedule;`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_time;`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_date;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_service_id;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_bookings_client_id;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_services_search_vector;`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS idx_services_category_status;`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_services_category_active;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_services_vendor_id;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_users_email_lower;`);
     await queryRunner.query(`DROP TABLE IF EXISTS user_sessions;`);
     await queryRunner.query(`DROP TABLE IF EXISTS booking_audit_logs;`);
-    await queryRunner.query(
-      `ALTER TABLE bookings DROP CONSTRAINT IF EXISTS exclude_overlapping_bookings;`,
-    );
     await queryRunner.query(`DROP TABLE IF EXISTS bookings;`);
     await queryRunner.query(`DROP TABLE IF EXISTS services;`);
     await queryRunner.query(`DROP TABLE IF EXISTS users;`);

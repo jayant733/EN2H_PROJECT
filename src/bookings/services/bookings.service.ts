@@ -1,11 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  ConflictException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { DataSource, QueryFailedError } from 'typeorm';
 import { BookingRepository } from '../repositories/booking.repository';
 import { BookingAuditLogRepository } from '../repositories/booking-audit-log.repository';
@@ -15,16 +8,13 @@ import { CancelBookingDto } from '../dto/cancel-booking.dto';
 import { QueryBookingDto } from '../dto/query-booking.dto';
 import { Booking } from '../entities/booking.entity';
 import { BookingStatus } from '../../shared/enums/booking-status.enum';
-import { ServiceStatus } from '../../shared/enums/service-status.enum';
 import { UserRole } from '../../shared/enums/role.enum';
 import { BookingAuditLog } from '../entities/booking-audit-log.entity';
-
-const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
-  [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
-  [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
-  [BookingStatus.COMPLETED]: [],
-  [BookingStatus.CANCELLED]: [],
-};
+import {
+  validateBookingCreation,
+  validateStatusTransition,
+  validateBookingView,
+} from './booking-helper';
 
 @Injectable()
 export class BookingsService {
@@ -37,62 +27,42 @@ export class BookingsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(dto: CreateBookingDto, clientId: string): Promise<Booking> {
+  async create(dto: CreateBookingDto, clientId: string | null): Promise<Booking> {
     const service = await this.serviceRepository.findOneById(dto.serviceId);
+    validateBookingCreation(service, dto);
 
-    if (!service || service.status === ServiceStatus.ARCHIVED) {
-      throw new NotFoundException(
-        'The requested service catalog listing was not found.',
-      );
-    }
-
-    if (service.status !== ServiceStatus.ACTIVE) {
-      throw new BadRequestException(
-        'Cannot book a service that is currently inactive.',
-      );
-    }
-
-    const scheduledDate = new Date(dto.scheduledAt);
-    if (scheduledDate.getTime() <= Date.now()) {
-      throw new BadRequestException(
-        'Booking scheduled time must be in the future.',
-      );
-    }
-
-    // App-level duplicate prevention check
     const isDuplicate = await this.bookingRepository.hasDuplicateBooking(
-      clientId,
       dto.serviceId,
-      scheduledDate,
+      dto.bookingDate,
+      dto.bookingTime,
     );
     if (isDuplicate) {
       throw new ConflictException(
-        'You already have a pending booking reservation for this service at the exact same time.',
+        'A booking already exists for this service, date, and time.',
       );
     }
 
-    const durationMs = service.durationMinutes * 60 * 1000;
-    const endTime = new Date(scheduledDate.getTime() + durationMs);
-
     try {
-      // Execute the entire booking persistence logic inside a transaction boundary
       return await this.dataSource.transaction(async (em) => {
         const booking = em.create(Booking, {
-          clientId,
+          clientId: clientId || null,
           serviceId: dto.serviceId,
-          scheduledAt: scheduledDate,
-          endTime,
-          priceAtBooking: service.price,
+          customerName: dto.customerName,
+          customerEmail: dto.customerEmail,
+          customerPhone: dto.customerPhone,
+          bookingDate: dto.bookingDate,
+          bookingTime: dto.bookingTime,
+          priceAtBooking: service!.price,
           status: BookingStatus.PENDING,
           notes: dto.notes,
-          idempotencyKey: dto.idempotencyKey,
+          idempotencyKey: dto.idempotencyKey || null,
         });
 
         const savedBooking = await em.save(Booking, booking);
 
         const auditLog = em.create(BookingAuditLog, {
           bookingId: savedBooking.id,
-          changedById: clientId,
+          changedById: clientId || null,
           previousStatus: null,
           newStatus: BookingStatus.PENDING,
           reason: 'Initial booking creation',
@@ -100,22 +70,11 @@ export class BookingsService {
         await em.save(BookingAuditLog, auditLog);
 
         this.logger.log(
-          `Booking created: ${savedBooking.id} for client ${clientId}`,
+          `Booking created: ${savedBooking.id} for customer ${dto.customerName}`,
         );
         return savedBooking;
       });
     } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        error.message.includes('exclude')
-      ) {
-        this.logger.warn(
-          `Concurrency clash: Overlapping booking rejected for service ${dto.serviceId}`,
-        );
-        throw new ConflictException(
-          'The requested appointment slot overlaps with another confirmed reservation.',
-        );
-      }
       if (
         error instanceof QueryFailedError &&
         error.message.includes('idempotency')
@@ -137,70 +96,20 @@ export class BookingsService {
     reason?: string,
   ): Promise<Booking> {
     const booking = await this.bookingRepository.findOneById(id);
-
-    if (!booking) {
-      throw new NotFoundException('Requested booking reservation not found.');
-    }
-
-    // Role-based access control checking
-    const isClientOwner = booking.clientId === userId;
-    const isVendorOwner = booking.service?.vendorId === userId;
-    const isAdmin = role === UserRole.ADMIN;
-
-    if (!isClientOwner && !isVendorOwner && !isAdmin) {
-      throw new ForbiddenException(
-        'You do not have permission to modify this booking.',
-      );
-    }
-
-    // Idempotent short-circuit: if requested status matches current status, return success directly
-    if (booking.status === newStatus) {
+    if (booking && booking.status === newStatus) {
       return booking;
     }
-
-    // Client restriction: clients can ONLY cancel bookings
-    if (
-      isClientOwner &&
-      !isAdmin &&
-      !isVendorOwner &&
-      newStatus !== BookingStatus.CANCELLED
-    ) {
-      throw new ForbiddenException(
-        'Clients are only permitted to cancel their booking reservations.',
-      );
-    }
-
-    // Vendor restriction: vendors cannot perform client-only tasks (if any) or admin tasks
-    if (
-      isVendorOwner &&
-      !isAdmin &&
-      !isClientOwner &&
-      newStatus === BookingStatus.PENDING
-    ) {
-      throw new ForbiddenException(
-        'Vendors are not permitted to transition bookings back to pending.',
-      );
-    }
-
-    const transitions = ALLOWED_TRANSITIONS[booking.status];
-    if (!transitions || !transitions.includes(newStatus)) {
-      this.logger.warn(
-        `Transition conflict: Rejected invalid transition from ${booking.status} to ${newStatus} on booking ${id}`,
-      );
-      throw new ConflictException(
-        `Cannot transition booking status from ${booking.status} to ${newStatus}.`,
-      );
-    }
+    validateStatusTransition(booking, newStatus, userId, role);
 
     return this.dataSource.transaction(async (em) => {
-      const previousStatus = booking.status;
-      booking.status = newStatus;
+      const previousStatus = booking!.status;
+      booking!.status = newStatus;
 
-      const savedBooking = await em.save(Booking, booking);
+      const savedBooking = await em.save(Booking, booking!);
 
       const auditLog = em.create(BookingAuditLog, {
         bookingId: savedBooking.id,
-        changedById: userId,
+        changedById: userId || null,
         previousStatus,
         newStatus,
         reason: reason || `Status updated to ${newStatus}`,
@@ -231,22 +140,8 @@ export class BookingsService {
 
   async findOne(id: string, userId: string, role: UserRole): Promise<Booking> {
     const booking = await this.bookingRepository.findOneById(id);
-
-    if (!booking) {
-      throw new NotFoundException('Requested booking reservation not found.');
-    }
-
-    const isClientOwner = booking.clientId === userId;
-    const isVendorOwner = booking.service?.vendorId === userId;
-    const isAdmin = role === UserRole.ADMIN;
-
-    if (!isClientOwner && !isVendorOwner && !isAdmin) {
-      throw new ForbiddenException(
-        'You do not have permission to view this booking reservation.',
-      );
-    }
-
-    return booking;
+    validateBookingView(booking, userId, role);
+    return booking!;
   }
 
   async findAll(
@@ -259,7 +154,6 @@ export class BookingsService {
     page: number;
     limit: number;
   }> {
-    // If user is client, enforce filtering to only their own bookings
     if (role === UserRole.CLIENT) {
       query.clientId = userId;
     }
