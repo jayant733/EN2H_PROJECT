@@ -10,6 +10,10 @@ export class UserSessionRepository {
     private readonly repository: Repository<UserSession>,
   ) {}
 
+  create(session: Partial<UserSession>): UserSession {
+    return this.repository.create(session);
+  }
+
   save(session: Partial<UserSession>): Promise<UserSession> {
     return this.repository.save(session);
   }

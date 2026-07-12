@@ -63,6 +63,10 @@ export class ServiceRepository {
     return qb.getManyAndCount();
   }
 
+  create(service: Partial<Service>): Service {
+    return this.repository.create(service);
+  }
+
   async save(service: Partial<Service>): Promise<Service> {
     return this.repository.save(service);
   }

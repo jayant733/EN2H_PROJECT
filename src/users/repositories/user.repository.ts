@@ -18,6 +18,10 @@ export class UserRepository {
     return this.repository.findOne({ where: { email } });
   }
 
+  create(user: Partial<User>): User {
+    return this.repository.create(user);
+  }
+
   save(user: Partial<User>): Promise<User> {
     return this.repository.save(user);
   }
