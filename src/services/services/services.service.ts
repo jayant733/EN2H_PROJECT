@@ -18,11 +18,12 @@ export class ServicesService {
   constructor(private readonly serviceRepository: ServiceRepository) {}
 
   async create(dto: CreateServiceDto, vendorId: string): Promise<Service> {
-    const service = await this.serviceRepository.save({
+    const serviceEntity = this.serviceRepository.create({
       ...dto,
       vendorId,
       isActive: dto.isActive !== undefined ? dto.isActive : true,
     });
+    const service = await this.serviceRepository.save(serviceEntity);
 
     this.logger.log(`Service created: ${service.id} by vendor ${vendorId}`);
     return service;
@@ -49,10 +50,8 @@ export class ServicesService {
       );
     }
 
-    const updatedService = await this.serviceRepository.save({
-      ...service,
-      ...dto,
-    });
+    Object.assign(service, dto);
+    const updatedService = await this.serviceRepository.save(service);
 
     this.logger.log(`Service updated: ${id} by vendor ${vendorId}`);
     return updatedService;

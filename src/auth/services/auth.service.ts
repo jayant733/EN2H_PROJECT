@@ -43,13 +43,14 @@ export class AuthService {
     }
 
     const hashedPassword = await this.cryptoUtil.hashPassword(dto.password);
-    const user = await this.userRepository.save({
+    const userEntity = this.userRepository.create({
       email: dto.email,
       fullName: dto.fullName,
       passwordHash: hashedPassword,
       role: dto.role,
-      status: UserStatus.ACTIVE, // Production: defaults to active for immediate usage in this scenario
+      status: UserStatus.ACTIVE,
     });
+    const user = await this.userRepository.save(userEntity);
 
     this.logger.log(`User registration successful: ${user.id} (${user.role})`);
     return user;
@@ -88,13 +89,14 @@ export class AuthService {
 
     // Save hashed session
     const hashedRefresh = this.hashToken(refreshToken);
-    await this.sessionRepository.save({
+    const session = this.sessionRepository.create({
       userId: user.id,
       refreshTokenHash: hashedRefresh,
       expiresAt,
       ipAddress,
       userAgent,
     });
+    await this.sessionRepository.save(session);
 
     this.logger.log(
       `Session initialized: User ${user.id} logged in from ${ipAddress}`,
@@ -153,13 +155,14 @@ export class AuthService {
 
     // Save new session
     const newHashedRefresh = this.hashToken(tokens.refreshToken);
-    await this.sessionRepository.save({
+    const newSession = this.sessionRepository.create({
       userId: user.id,
       refreshTokenHash: newHashedRefresh,
       expiresAt: tokens.expiresAt,
       ipAddress,
       userAgent,
     });
+    await this.sessionRepository.save(newSession);
 
     this.logger.log(`Session rotated: User ${user.id} rotated refresh token`);
     return {

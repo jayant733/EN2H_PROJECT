@@ -13,7 +13,7 @@ import { QueryServiceDto } from '../dto/query-service.dto';
 describe('ServicesService', () => {
   let service: ServicesService;
   let repository: jest.Mocked<
-    Pick<ServiceRepository, 'findOneById' | 'findWithFilters' | 'save'>
+    Pick<ServiceRepository, 'findOneById' | 'findWithFilters' | 'save' | 'create'>
   >;
 
   beforeEach(async () => {
@@ -21,6 +21,7 @@ describe('ServicesService', () => {
       findOneById: jest.fn(),
       findWithFilters: jest.fn(),
       save: jest.fn(),
+      create: jest.fn((x) => x),
     };
 
     const module: TestingModule = await Test.createTestingModule({

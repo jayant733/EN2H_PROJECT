@@ -15,14 +15,14 @@ import { UserSession } from '../entities/user-session.entity';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let userRepository: jest.Mocked<Pick<UserRepository, 'findOneByEmail' | 'findOneById' | 'save'>>;
-  let sessionRepository: jest.Mocked<Pick<UserSessionRepository, 'save' | 'findOneActive'>>;
+  let userRepository: jest.Mocked<Pick<UserRepository, 'findOneByEmail' | 'findOneById' | 'save' | 'create'>>;
+  let sessionRepository: jest.Mocked<Pick<UserSessionRepository, 'save' | 'findOneActive' | 'create'>>;
   let cryptoUtil: jest.Mocked<Pick<CryptoUtil, 'hashPassword' | 'comparePassword'>>;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verifyAsync' | 'decode'>>;
 
   beforeEach(async () => {
-    const mockUserRepository = { findOneByEmail: jest.fn(), findOneById: jest.fn(), save: jest.fn() };
-    const mockSessionRepository = { save: jest.fn(), findOneActive: jest.fn() };
+    const mockUserRepository = { findOneByEmail: jest.fn(), findOneById: jest.fn(), save: jest.fn(), create: jest.fn((x) => x) };
+    const mockSessionRepository = { save: jest.fn(), findOneActive: jest.fn(), create: jest.fn((x) => x) };
     const mockCryptoUtil = { hashPassword: jest.fn(), comparePassword: jest.fn() };
     const mockJwtService = { signAsync: jest.fn(), verifyAsync: jest.fn(), decode: jest.fn() };
     const mockConfigService = {
